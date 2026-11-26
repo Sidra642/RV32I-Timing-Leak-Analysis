@@ -387,5 +387,18 @@ MEM_WB_reg MEM_WB_reg_inst (
         .Mux3_out(WriteBack_WB)
     );
     
+    
+    //trace pipeline
+    trace_pipe tr (
+    	.clk(clk), .reset(reset),
+    	.flush_ifid(redirect_EX), .ifid_write(IF_ID_Write),
+    	.bubble_idex(stall | redirect_EX),
+    	.pc_ID(PC_ID),
+    	.is_mem_EX(MemRead_EX | MemWrite_EX),
+    	.addr_EX(ex_result_EX),
+    	.opA_EX(forwardA_mux_out), .opB_EX(forwardB_mux_out),
+    	.valid_WB(), .is_mem_WB(), .pc_WB(), .addr_WB(), .opA_WB(), .opB_WB()
+    );
+
 
 endmodule
