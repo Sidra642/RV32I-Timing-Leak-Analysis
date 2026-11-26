@@ -117,6 +117,9 @@ def encode(mn, ops, pc, labels):
         return (fit(off, 12, 'offset') << 20) | (rs1 << 15) | (reg(ops[0]) << 7) | 0x67
     if mn in ('lui', 'auipc'):
         return ((int(ops[1], 0) & 0xFFFFF) << 12) | (reg(ops[0]) << 7) | (0x37 if mn == 'lui' else 0x17)
+    if mn == 'rdcycle':
+    	return (0xC00 << 20) | (2 << 12) | (reg(ops[0]) << 7) | 0x73
+        
     raise ValueError(f'unknown instruction {mn}')
 
 
