@@ -1,0 +1,44 @@
+[PASS] add          cycles=474
+[PASS] addi         cycles=233
+[PASS] and          cycles=494
+[PASS] andi         cycles=189
+[PASS] auipc        cycles=42
+[PASS] beq          cycles=322
+[PASS] bge          cycles=358
+[PASS] bgeu         cycles=383
+[PASS] blt          cycles=322
+[PASS] bltu         cycles=347
+[PASS] bne          cycles=326
+[XFAIL] fence_i     TIMEOUT   <- expected: self-modifying code: instruction memory is separate from data memory
+[PASS] jal          cycles=38
+[PASS] jalr         cycles=118
+[PASS] lb           cycles=255
+[PASS] lbu          cycles=255
+[PASS] ld_st        cycles=1287
+[PASS] lh           cycles=271
+[PASS] lhu          cycles=280
+[PASS] lui          cycles=44
+[PASS] lw           cycles=285
+[XFAIL] ma_data     FAIL testnum=1  <- expected: misaligned accesses: Data_Memory ignores them, no trap support
+[PASS] or           cycles=497
+[PASS] ori          cycles=196
+[PASS] sb           cycles=550
+[PASS] sh           cycles=611
+[PASS] simple       cycles=18
+[PASS] sll          cycles=502
+[PASS] slli         cycles=232
+[PASS] slt          cycles=468
+[PASS] slti         cycles=228
+[PASS] sltiu        cycles=228
+[PASS] sltu         cycles=468
+[PASS] sra          cycles=521
+[PASS] srai         cycles=247
+[PASS] srl          cycles=515
+[PASS] srli         cycles=241
+[PASS] st_ld        cycles=589
+[PASS] sub          cycles=466
+[PASS] sw           cycles=623
+[PASS] xor          cycles=496
+[PASS] xori         cycles=198
+
+rv32ui: 40 passed, 2 expected failures, 0 unexpected failures
