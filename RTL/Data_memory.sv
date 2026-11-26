@@ -1,16 +1,17 @@
 `timescale 1ns / 1ps
 
 module Data_Memory #(
-    parameter DEPTH_WORDS = 32   // number of 32-bit words
+    parameter DEPTH_WORDS = 2048   // number of 32-bit words (8 KB)
 )(
     input  logic        clk,
     input  logic        reset,
-    input  logic        MemWrite,
+    input  logic        MemWrite,     // already gated by the top: MemWrite_MEM & ~mem_stall
     input  logic        MemRead,
     input  logic [2:0]  funct3,       // load/store type (RISC-V funct3)
     input  logic [31:0] read_address, // byte address
     input  logic [31:0] Write_data,   // rs2 value
-    output logic [31:0] MemData_out
+    output logic [31:0] MemData_out,
+    output logic        silent_store  // 1 = this store would not change memory
 );
 
     localparam int ADDR_W = $clog2(DEPTH_WORDS);
@@ -22,58 +23,50 @@ module Data_Memory #(
     wire [ADDR_W-1:0] widx     = read_address[ADDR_W+1:2]; // word index (drop 2 LSBs)
     wire [1:0]        byte_off = read_address[1:0];        // byte offset inside word
 
-    // --- READ path ---
-   /* logic [31:0] word_r;
-    logic [7:0]  byte_sel;
-    logic [15:0] half_sel;
+    // --- READ path (combinational) ---
+    wire [31:0] word_r   = D_Memory[widx];
+    wire [7:0]  byte_sel = (byte_off == 2'b00) ? word_r[7:0]   :
+                           (byte_off == 2'b01) ? word_r[15:8]  :
+                           (byte_off == 2'b10) ? word_r[23:16] : word_r[31:24];
+    wire [15:0] half_sel = byte_off[1] ? word_r[31:16] : word_r[15:0];
 
-    always_comb begin
-    	$display("%0t DM comb", $time);
-        word_r   = D_Memory[widx];
-        MemData_out = 32'h0;
-
-        // select byte and halfword
-        byte_sel = (byte_off == 2'b00) ? word_r[7:0]   :
-                   (byte_off == 2'b01) ? word_r[15:8]  :
-                   (byte_off == 2'b10) ? word_r[23:16] :
-                                         word_r[31:24];
-
-        half_sel = (byte_off[1]==1'b0) ? word_r[15:0] : word_r[31:16];
-
-        if (MemRead) begin
-            unique case (funct3)
-                3'b000: MemData_out = {{24{byte_sel[7]}}, byte_sel};   // lb
-                3'b100: MemData_out = {24'b0, byte_sel};               // lbu
-                3'b001: MemData_out = {{16{half_sel[15]}}, half_sel};  // lh
-                3'b101: MemData_out = {16'b0, half_sel};               // lhu
-                3'b010: MemData_out = word_r;                          // lw
-                default: MemData_out = 32'h0;
-            endcase
-        end
+    reg [31:0] load_val;
+    always @* begin
+        case (funct3)
+            3'b000:  load_val = {{24{byte_sel[7]}}, byte_sel};   // lb
+            3'b100:  load_val = {24'b0, byte_sel};               // lbu
+            3'b001:  load_val = {{16{half_sel[15]}}, half_sel};  // lh
+            3'b101:  load_val = {16'b0, half_sel};               // lhu
+            3'b010:  load_val = word_r;                          // lw
+            default: load_val = 32'h0;
+        endcase
     end
-*/
-wire [31:0] word_r   = D_Memory[widx];
-wire [7:0]  byte_sel = (byte_off == 2'b00) ? word_r[7:0]   :
-                       (byte_off == 2'b01) ? word_r[15:8]  :
-                       (byte_off == 2'b10) ? word_r[23:16] : word_r[31:24];
-wire [15:0] half_sel = byte_off[1] ? word_r[31:16] : word_r[15:0];
+    assign MemData_out = MemRead ? load_val : 32'h0;
 
-reg [31:0] load_val;
-always @* begin
-    case (funct3)
-        3'b000:  load_val = {{24{byte_sel[7]}}, byte_sel};
-        3'b100:  load_val = {24'b0, byte_sel};
-        3'b001:  load_val = {{16{half_sel[15]}}, half_sel};
-        3'b101:  load_val = {16'b0, half_sel};
-        3'b010:  load_val = word_r;
-        default: load_val = 32'h0;
-    endcase
-end
-assign MemData_out = MemRead ? load_val : 32'h0;
+    // --- What the word would look like after this store ---
+    reg [31:0] store_word;
+    always @* begin
+        store_word = word_r;
+        case (funct3)
+            3'b000: case (byte_off)                              // sb
+                        2'b00: store_word[7:0]   = Write_data[7:0];
+                        2'b01: store_word[15:8]  = Write_data[7:0];
+                        2'b10: store_word[23:16] = Write_data[7:0];
+                        2'b11: store_word[31:24] = Write_data[7:0];
+                    endcase
+            3'b001: if (byte_off[1]) store_word[31:16] = Write_data[15:0];   // sh
+                    else             store_word[15:0]  = Write_data[15:0];
+            3'b010: store_word = Write_data;                     // sw
+            default: ;
+        endcase
+    end
+    // Does not depend on MemWrite, so there is no feedback through the write gate.
+    assign silent_store = (store_word == word_r);
+
     // --- WRITE path ---
     always_ff @(posedge clk) begin
         if (MemWrite) begin
-            unique case (funct3)
+            case (funct3)
                 3'b000: begin // sb
                     case (byte_off)
                         2'b00: D_Memory[widx][7:0]   <= Write_data[7:0];
@@ -83,23 +76,25 @@ assign MemData_out = MemRead ? load_val : 32'h0;
                     endcase
                 end
                 3'b001: begin // sh
-                    if (byte_off[0]==1'b0) begin
-                        if (byte_off[1]==1'b0)
+                    if (byte_off[0] == 1'b0) begin
+                        if (byte_off[1] == 1'b0)
                             D_Memory[widx][15:0]  <= Write_data[15:0];
                         else
                             D_Memory[widx][31:16] <= Write_data[15:0];
                     end
                 end
                 3'b010: begin // sw
-                    if (byte_off==2'b00)
+                    if (byte_off == 2'b00)
                         D_Memory[widx] <= Write_data;
                 end
+                default: ;
             endcase
         end
     end
 
-    // --- Preload memory contents ---
+    // --- Preload memory contents: zero everything first, then the 32 preset words ---
     initial begin
+        for (int k = 0; k < DEPTH_WORDS; k++) D_Memory[k] = 32'h00000000;
         D_Memory[0]  = 32'h00000000;
         D_Memory[1]  = 32'h00000004;
         D_Memory[2]  = 32'h00000002;
