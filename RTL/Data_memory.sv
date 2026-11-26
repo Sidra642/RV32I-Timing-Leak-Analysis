@@ -127,6 +127,7 @@ module Data_Memory #(
         D_Memory[29] = 32'h00000005;
         D_Memory[30] = 32'h00000006;
         D_Memory[31] = 32'h00000003;
+        if ($test$plusargs("LOADDATA")) $readmemh("data.hex", D_Memory, 1024);
     end
 
 endmodule
