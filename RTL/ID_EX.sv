@@ -39,7 +39,9 @@ module ID_EX_reg (
     output logic [2:0] funct3_out,
     output logic fun7_out,
     
-    output logic is_csr_out
+    output logic is_csr_out,
+    
+    input logic hold
 );
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -61,6 +63,8 @@ module ID_EX_reg (
             funct3_out <= 3'b0;
             fun7_out <= 1'b0;
             is_csr_out <= 1'b0;
+        end else if (hold) begin
+        
         end else if (stall) begin
             // Insert NOP (bubble) when stalled
             RegWrite_out <= 1'b0;

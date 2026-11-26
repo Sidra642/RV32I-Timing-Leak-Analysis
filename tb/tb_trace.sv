@@ -7,7 +7,7 @@ module tb_trace;
 
     // One line per retired instruction, printed at negedge so values are stable.
     always @(negedge clk)
-        if (!reset && uut.tr.valid_WB) begin
+        if (!reset && uut.tr.retire_WB) begin
             if (uut.tr.is_mem_WB)
                 $display("RET %0d %08x %08x %08x %08x", uut.cycle_cnt,
                          uut.tr.pc_WB, uut.tr.addr_WB, uut.tr.opA_WB, uut.tr.opB_WB);

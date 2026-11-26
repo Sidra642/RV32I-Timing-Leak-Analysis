@@ -31,7 +31,7 @@ module tb_top;
         
         // Run processor for 400 clock cycles
         repeat (400) @(posedge clk);
-        
+        $display("x3 = %0d", uut.Reg_File_ID.Registers[3]);
         $display("Simulation completed.");
         $finish;
     end

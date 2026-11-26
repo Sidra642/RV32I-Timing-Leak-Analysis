@@ -11,7 +11,9 @@ module MEM_WB_reg (
     output logic [31:0] ALU_result_out,
     output logic [4:0] Rd_out,
     output logic RegWrite_out,
-    output logic [1:0] MemtoReg_out
+    output logic [1:0] MemtoReg_out,
+    
+    input logic hold
 );
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -20,7 +22,7 @@ module MEM_WB_reg (
             Rd_out <= 5'b0;
             RegWrite_out <= 1'b0;
             MemtoReg_out <= 2'b0;
-        end else begin
+        end else if(!hold) begin
             MemData_out <= MemData_in;
             ALU_result_out <= ALU_result_in;
             Rd_out <= Rd_in;

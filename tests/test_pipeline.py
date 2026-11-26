@@ -572,7 +572,7 @@ def build(src_dir, work):
 def run_rtl(work, words, steps, timeout):
     with open(os.path.join(work, 'program.hex'), 'w') as f:
         f.write('\n'.join(f'{w:08x}' for w in words) + '\n')
-    cycles = steps * 3 + 40
+    cycles = steps * 16 + 100
     try:
         r = subprocess.run(['vvp', 'sim.out', f'+CYCLES={cycles}'], cwd=work,
                            capture_output=True, text=True, timeout=timeout)

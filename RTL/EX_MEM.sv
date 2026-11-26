@@ -21,7 +21,11 @@ module EX_MEM_reg (
     output logic [1:0] jump_out,         // Added jump_out
     output logic [31:0] PC_branch_out,   // Added PC_branch_out
     input  logic [2:0] funct3_in,
-    output logic [2:0] funct3_out
+    output logic [2:0] funct3_out,
+    
+    input logic hold
+    
+    
 );
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -35,7 +39,7 @@ module EX_MEM_reg (
             jump_out <= 2'b0;
             PC_branch_out <= 32'b0;
             funct3_out<=3'b0;
-        end else begin
+        end else if(!hold) begin
             ALU_result_out <= ALU_result_in;
             Rd2_out <= Rd2_in;
             Rd_out <= Rd_in;

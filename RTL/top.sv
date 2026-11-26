@@ -71,6 +71,9 @@ module top_pipelined (
     //CSR logic
     logic is_csr_ID, is_csr_EX;
     logic [31:0] cycle_cnt;
+    
+    //
+    logic mem_stall, silent_MEM;
 
 
 
@@ -141,7 +144,7 @@ always_ff @(posedge clk or posedge reset)
         .reset(reset),
         .PC_in(PC_mux_IF),  //changed from PC_next_IF
         .PC_out(PC_IF),
-        .PCWrite(PCWrite | redirect_EX)  // changed from PCWrite input to program_counter
+        .PCWrite((PCWrite | redirect_EX) & ~mem_stall)  // changed from PCWrite input to program_counter
     );
 
     PC_plus4 PC_plus4_inst (
@@ -162,8 +165,8 @@ always_ff @(posedge clk or posedge reset)
         .instruction_in(instruction_IF),
         .PC_out(PC_ID),
         .instruction_out(instruction_ID),
-        .IF_ID_Write(IF_ID_Write),  // Add write enable
-        .flush(redirect_EX) //added new
+        .IF_ID_Write(IF_ID_Write & ~mem_stall),  // Add write enable
+        .flush(redirect_EX & ~mem_stall) //added new
     );
     
          // Extract fields from instruction
@@ -258,7 +261,9 @@ always_ff @(posedge clk or posedge reset)
         .stall(stall | redirect_EX),  // Add stall input //added new from stall
         
         .is_csr_in(is_csr_ID),    // new inputs
-        .is_csr_out(is_csr_EX)   // new output
+        .is_csr_out(is_csr_EX),   // new output
+        
+        .hold(mem_stall)
         
     );
    ALU_Control ALU_Control_EX (
@@ -344,7 +349,8 @@ EX_MEM_reg EX_MEM_reg_inst (
     .jump_out(jump_MEM),            // Changed from jump_out to jump_out
     .PC_branch_out(PC_branch_MEM),   // Changed from PC_branch_out to PC_branch_out
     .funct3_in(funct3_EX),
-    .funct3_out(funct3_MEM)
+    .funct3_out(funct3_MEM),
+    .hold(mem_stall)
 );
 
  
@@ -353,12 +359,13 @@ EX_MEM_reg EX_MEM_reg_inst (
     Data_Memory Data_Mem_inst (
         .clk(clk),
         .reset(reset),
-        .MemWrite(MemWrite_MEM),
+        .MemWrite(MemWrite_MEM & ~mem_stall),
         .MemRead(MemRead_MEM),
         .funct3(funct3_MEM),
         .read_address(ALU_result_MEM),
         .Write_data(Rd2_MEM),
-        .MemData_out(DataMem_out_MEM)
+        .MemData_out(DataMem_out_MEM),
+        .silent_store(silent_MEM)
     );
 
     // MEM/WB Pipeline Register
@@ -374,7 +381,8 @@ MEM_WB_reg MEM_WB_reg_inst (
     .ALU_result_out(ALU_result_WB),
     .Rd_out(Rd_WB),
     .RegWrite_out(RegWrite_WB),
-    .MemtoReg_out(MemtoReg_WB)
+    .MemtoReg_out(MemtoReg_WB),
+    .hold(mem_stall)
 );
     // ============== WB Stage ==============
 
@@ -397,8 +405,19 @@ MEM_WB_reg MEM_WB_reg_inst (
     	.is_mem_EX(MemRead_EX | MemWrite_EX),
     	.addr_EX(ex_result_EX),
     	.opA_EX(forwardA_mux_out), .opB_EX(forwardB_mux_out),
-    	.valid_WB(), .is_mem_WB(), .pc_WB(), .addr_WB(), .opA_WB(), .opB_WB()
+    	.valid_WB(), .is_mem_WB(), .pc_WB(), .addr_WB(), .opA_WB(), .opB_WB(),
+    	.freeze(mem_stall), .retire_WB()
+    	
     );
+    
+    mem_timing mt (
+    .clk(clk), .reset(reset),
+    .req(MemRead_MEM | MemWrite_MEM),
+    .is_store(MemWrite_MEM),
+    .silent(silent_MEM),
+    .addr(ALU_result_MEM),
+    .stall(mem_stall)
+);
 
 
 endmodule
