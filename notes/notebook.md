@@ -12,3 +12,9 @@
 - Regression: 80 tests (directed + 50 random) pass on Icarus 12.
 - Dead end: Icarus 11.0 froze on branch tests; fixed by using Icarus 12.
 - Next: step 1, add rdcycle and the retirement trace.
+
+### Day 1: rdcycle
+- inst_mem now loads program.hex ($readmemh), so programs change without editing RTL.
+- Added is_csr (control unit, ID/EX) and a free-running cycle_cnt, muxed into the EX result.
+- Check: rdcycle, 10 nops, rdcycle, sub gives 11 (no stalls). Regression still 80/80.
+- Next: retirement trace (valid bit, PC, address, operands carried to WB).
