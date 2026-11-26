@@ -65,11 +65,22 @@ module top_pipelined (
 
     //added new
     logic [31:0] ex_result_EX, redirect_target_EX, PC_mux_IF;
-logic branch_taken_EX, redirect_EX;
+    logic branch_taken_EX, redirect_EX;
+    
+    
+    //CSR logic
+    logic is_csr_ID, is_csr_EX;
+    logic [31:0] cycle_cnt;
+
+
 
 
 always_comb begin
-    if (jump_EX == 2'b01 || jump_EX == 2'b10) ex_result_EX = PC_EX + 32'd4;
+	if (is_csr_EX)
+        ex_result_EX = cycle_cnt; 
+
+    else if (jump_EX == 2'b01 || jump_EX == 2'b10) 
+    	ex_result_EX = PC_EX + 32'd4;
     else case (MemtoReg_EX)
         2'b10:   ex_result_EX = PC_EX + ImmExt_EX;   // AUIPC
         2'b11:   ex_result_EX = ImmExt_EX;           // LUI
@@ -93,6 +104,11 @@ assign redirect_target_EX = (jump_EX == 2'b10) ? {jalr_target_EX[31:1], 1'b0}
                                                 : branch_target_EX;
 assign PC_mux_IF = redirect_EX ? redirect_target_EX : PC_next_IF;
 
+
+//for counter
+always_ff @(posedge clk or posedge reset)
+    if (reset) cycle_cnt <= 32'd0;
+    else       cycle_cnt <= cycle_cnt + 32'd1;
 
 //added new
     
@@ -198,7 +214,8 @@ assign PC_mux_IF = redirect_EX ? redirect_target_EX : PC_next_IF;
         .MemRead(MemRead_ID),
         .MemWrite(MemWrite_ID),
         .MemtoReg(MemtoReg_ID),
-        .jump(jump_ID)
+        .jump(jump_ID),
+        .is_csr(is_csr_ID) 
     );
 
 
@@ -238,7 +255,11 @@ assign PC_mux_IF = redirect_EX ? redirect_target_EX : PC_next_IF;
         .jump_out(jump_EX),
         .funct3_out(funct3_EX),
         .fun7_out(fun7_EX),
-        .stall(stall | redirect_EX)  // Add stall input //added new from stall
+        .stall(stall | redirect_EX),  // Add stall input //added new from stall
+        
+        .is_csr_in(is_csr_ID),    // new inputs
+        .is_csr_out(is_csr_EX)   // new output
+        
     );
    ALU_Control ALU_Control_EX (
         .fun7(fun7_EX),

@@ -18,13 +18,16 @@ module control_unit (
     output logic [1:0] MemtoReg,    
 
     // PC control
-    output logic [1:0] jump         // 00 = PC+4, 01 = PC+offset, 10 = JALR
+    output logic [1:0] jump ,        // 00 = PC+4, 01 = PC+offset, 10 = JALR
+    
+    output logic is_csr
+    
 );
 
    
  always_comb begin
     RegWrite = 0; ALUSrc = 0; ALUOp = 2'b00; MemRead = 0;
-    MemWrite = 0; MemtoReg = 2'b00; jump = 2'b00;
+    MemWrite = 0; MemtoReg = 2'b00; jump = 2'b00; is_csr = 0;
     if (!reset) case (opcode)
         7'b0110011: begin RegWrite = 1; ALUOp = 2'b10; end
         7'b0010011: begin RegWrite = 1; ALUSrc = 1; ALUOp = 2'b11; end
@@ -35,6 +38,8 @@ module control_unit (
         7'b1100111: begin RegWrite = 1; ALUSrc = 1; jump = 2'b10; end
         7'b0110111: begin RegWrite = 1; ALUSrc = 1; MemtoReg = 2'b11; end // LUI
         7'b0010111: begin RegWrite = 1; ALUSrc = 1; MemtoReg = 2'b10; end // AUIPC
+        
+        7'b1110011: begin RegWrite = 1; is_csr = 1; end   // rdcycle (minimal CSR support)
         default: ;
     endcase
 end

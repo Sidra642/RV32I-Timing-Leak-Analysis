@@ -19,6 +19,9 @@ module ID_EX_reg (
     input logic [2:0] funct3_in,
     input logic fun7_in,
     input logic stall,  // New input
+    
+    input logic is_csr_in,
+    
     output logic [31:0] PC_out,
     output logic [31:0] Rd1_out,
     output logic [31:0] Rd2_out,
@@ -34,7 +37,9 @@ module ID_EX_reg (
     output logic [1:0] MemtoReg_out,
     output logic [1:0] jump_out,
     output logic [2:0] funct3_out,
-    output logic fun7_out
+    output logic fun7_out,
+    
+    output logic is_csr_out
 );
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
@@ -55,6 +60,7 @@ module ID_EX_reg (
             jump_out <= 2'b0;
             funct3_out <= 3'b0;
             fun7_out <= 1'b0;
+            is_csr_out <= 1'b0;
         end else if (stall) begin
             // Insert NOP (bubble) when stalled
             RegWrite_out <= 1'b0;
@@ -64,6 +70,8 @@ module ID_EX_reg (
             jump_out <= 2'b0;
             MemtoReg_out <= 2'b0;
             // Keep other values as they are (or set to safe values)
+            
+            is_csr_out <= 1'b0;
         end else begin
             // Normal operation
             PC_out <= PC_in;
@@ -82,6 +90,8 @@ module ID_EX_reg (
             jump_out <= jump_in;
             funct3_out <= funct3_in;
             fun7_out <= fun7_in;
+            
+            is_csr_out<= is_csr_in;
         end
     end
 endmodule
