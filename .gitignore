@@ -1,0 +1,8 @@
+sim.out
+*.vcd
+*.log
+log.txt
+program.hex
+__pycache__/
+results/*.png
+*.pyc
